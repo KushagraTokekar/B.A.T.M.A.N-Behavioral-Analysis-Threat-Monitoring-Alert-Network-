@@ -7,6 +7,10 @@ import Dashboard from "./pages/Dashboard";
 import Report from "./pages/Report";
 import MyReports from "./pages/MyReports";
 
+import AdminDashboard from "./pages/AdminDashboard";
+import ThreatAnalytics from "./pages/ThreatAnalytics";
+
+
 function App() {
   return (
     <BrowserRouter>
@@ -17,6 +21,8 @@ function App() {
         <Route path="/report" element={<Report />} />
         <Route path="/my-reports" element={<MyReports />} />
         <Route path="/risk-map" element={<RiskMap />} />
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/analytics" element={<ThreatAnalytics />} />
       </Routes>
     </BrowserRouter>
   );

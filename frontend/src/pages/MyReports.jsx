@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
+import "./PageStyle.css";
 
 export default function MyReports() {
   const navigate = useNavigate();
@@ -34,96 +35,63 @@ export default function MyReports() {
     }
   };
 
+  const getStatusClass = (status) => {
+    if (status === "verified") return "status-verified";
+    if (status === "fake") return "status-fake";
+    if (status === "resolved") return "status-resolved";
+    return "status-pending";
+  };
+
   return (
-    <div style={styles.page}>
-      <div style={styles.container}>
-        <div style={styles.header}>
-          <h1>My Reports</h1>
-          <button onClick={() => navigate("/dashboard")} style={styles.backButton}>
-            Back to Dashboard
-          </button>
-        </div>
+    <div className="tactical-page">
+      <div className="tactical-card tactical-wide">
+        <h1 className="tactical-title">My Reports</h1>
+        <p className="tactical-subtitle">
+          Track all incidents submitted by your operator account.
+        </p>
 
         {loading ? (
-          <p>Loading reports...</p>
+          <p className="tactical-empty">Loading reports...</p>
         ) : reports.length === 0 ? (
-          <p>No reports submitted yet.</p>
+          <p className="tactical-empty">No reports submitted yet.</p>
         ) : (
-          <div style={styles.grid}>
+          <div className="reports-grid">
             {reports.map((report) => (
-              <div key={report.id} style={styles.card}>
-                <h2>{report.incident_type}</h2>
-
-                <p>{report.description}</p>
-
-                <div style={styles.info}>
-                  <span>Severity: {report.severity}</span>
-                  <span>Status: {report.status}</span>
+              <div key={report.id} className="report-card">
+                <div className="report-card-header">
+                  <h2>{report.incident_type}</h2>
+                  <span className={getStatusClass(report.status)}>
+                    {report.status}
+                  </span>
                 </div>
 
-                <div style={styles.location}>
+                <p className="report-desc">{report.description}</p>
+
+                <div className="report-info">
+                  <span>Severity</span>
+                  <strong>{report.severity}</strong>
+                </div>
+
+                <div className="report-location">
                   <small>Lat: {report.latitude}</small>
                   <small>Lng: {report.longitude}</small>
                 </div>
 
-                <small>
+                <small className="report-time">
                   Reported: {new Date(report.created_at).toLocaleString()}
                 </small>
               </div>
             ))}
           </div>
         )}
+
+        <button
+          onClick={() => navigate("/dashboard")}
+          className="tactical-secondary"
+        >
+          Back to Dashboard
+        </button>
       </div>
     </div>
   );
 }
-
-const styles = {
-  page: {
-    minHeight: "100vh",
-    background: "#0f172a",
-    color: "white",
-    padding: "30px",
-  },
-  container: {
-    maxWidth: "1100px",
-    margin: "0 auto",
-  },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "25px",
-  },
-  backButton: {
-    padding: "10px 15px",
-    background: "#334155",
-    color: "white",
-    border: "none",
-    borderRadius: "6px",
-    cursor: "pointer",
-  },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-    gap: "18px",
-  },
-  card: {
-    background: "#020617",
-    border: "1px solid #334155",
-    borderRadius: "12px",
-    padding: "20px",
-  },
-  info: {
-    display: "flex",
-    justifyContent: "space-between",
-    margin: "15px 0",
-    color: "#facc15",
-  },
-  location: {
-    display: "flex",
-    justifyContent: "space-between",
-    color: "#94a3b8",
-    marginBottom: "10px",
-  },
-};

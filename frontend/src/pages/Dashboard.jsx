@@ -10,21 +10,30 @@ import "./Dashboard.css";
 export default function Dashboard() {
   const navigate = useNavigate();
 
+  const user = JSON.parse(localStorage.getItem("user"));
+
   const [reports, setReports] = useState([]);
   const [userLocation, setUserLocation] = useState(null);
   const [nearbyIncidents, setNearbyIncidents] = useState([]);
+  const [isMapFullScreen, setIsMapFullScreen] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+  const token = localStorage.getItem("token");
 
-    if (!token) {
-      navigate("/");
-      return;
-    }
+  if (!token) {
+    navigate("/");
+    return;
+  }
 
-    getUserLocation();
+  getUserLocation();
+  fetchReports();
+
+  const interval = setInterval(() => {
     fetchReports();
-  }, [navigate]);
+  }, 10000);
+
+  return () => clearInterval(interval);
+}, [navigate]);
 
   useEffect(() => {
     if (!userLocation || reports.length === 0) return;
@@ -82,9 +91,10 @@ export default function Dashboard() {
   };
 
   const logout = () => {
-    localStorage.removeItem("token");
-    navigate("/");
-  };
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  navigate("/");
+};
 
   const getIcon = (severity) => {
     let color = "green";
@@ -113,13 +123,34 @@ export default function Dashboard() {
         </div>
 
         <nav className="menu">
-          <button className="active">▦ Dashboard</button>
-          <button onClick={() => navigate("/report")}>⊕ Report Incident</button>
-          <button onClick={() => navigate("/my-reports")}>▣ My Reports</button>
-          <button>⌁ Threat Analytics</button>
-          <button>◉ Social Monitoring</button>
-          <button>⚙ Settings</button>
-        </nav>
+  <button className="active">▦ Dashboard</button>
+
+  <button onClick={() => navigate("/report")}>
+    ⊕ Report Incident
+  </button>
+
+  <button onClick={() => navigate("/my-reports")}>
+    ▣ My Reports
+  </button>
+
+  {user?.role === "admin" && (
+    <button onClick={() => navigate("/admin")}>
+      🛡 Admin Panel
+    </button>
+  )}
+
+  <button onClick={() => navigate("/analytics")}>
+  ⌁ Threat Analytics
+</button>
+
+  <button>
+    ◉ Social Monitoring
+  </button>
+
+  <button>
+    ⚙ Settings
+  </button>
+</nav>
 
         <div className="operator-card">
           <div className="avatar">👤</div>
@@ -199,46 +230,50 @@ export default function Dashboard() {
         </section>
 
         <section className="content-grid">
-          <div className="panel map-panel">
-            <div className="panel-header">
-              <h3>LIVE RISK MAP</h3>
-            </div>
+          <div className={isMapFullScreen ? "map-fullscreen" : "panel map-panel"}>
+  <div className="panel-header">
+    <h3>LIVE RISK MAP</h3>
 
-            <div className="dashboard-map">
-              <MapContainer
-                center={[22.7196, 75.8577]}
-                zoom={12}
-                style={{ height: "100%", width: "100%" }}
-              >
-                <TileLayer
-                  attribution="© OpenStreetMap"
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
+    <button onClick={() => setIsMapFullScreen(!isMapFullScreen)}>
+      {isMapFullScreen ? "Exit Fullscreen" : "Open Fullscreen"}
+    </button>
+  </div>
 
-                {reports.map((report) => (
-                  <Marker
-                    key={report.id}
-                    position={[
-                      Number(report.latitude),
-                      Number(report.longitude),
-                    ]}
-                    icon={getIcon(report.severity)}
-                  >
-                    <Popup>
-                      <h3>{report.incident_type}</h3>
-                      <p>{report.description}</p>
-                      <p>
-                        <strong>Severity:</strong> {report.severity}
-                      </p>
-                      <p>
-                        <strong>Status:</strong> {report.status}
-                      </p>
-                    </Popup>
-                  </Marker>
-                ))}
-              </MapContainer>
-            </div>
-          </div>
+  <div className={isMapFullScreen ? "fullscreen-map-box" : "dashboard-map"}>
+    <MapContainer
+      center={[22.7196, 75.8577]}
+      zoom={12}
+      style={{ height: "100%", width: "100%" }}
+    >
+      <TileLayer
+        attribution="© OpenStreetMap"
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+
+      {reports.map((report) => (
+        <Marker
+          key={report.id}
+          position={[
+            Number(report.latitude),
+            Number(report.longitude),
+          ]}
+          icon={getIcon(report.severity)}
+        >
+          <Popup>
+            <h3>{report.incident_type}</h3>
+            <p>{report.description}</p>
+            <p>
+              <strong>Severity:</strong> {report.severity}
+            </p>
+            <p>
+              <strong>Status:</strong> {report.status}
+            </p>
+          </Popup>
+        </Marker>
+      ))}
+    </MapContainer>
+  </div>
+</div>
 
           <div className="panel alerts">
             <div className="panel-header">

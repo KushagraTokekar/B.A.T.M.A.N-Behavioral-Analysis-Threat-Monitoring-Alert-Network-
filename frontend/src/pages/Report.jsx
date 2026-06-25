@@ -4,8 +4,8 @@ import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import api from "../services/api";
+import "./PageStyle.css";
 
-// Fix default marker icon issue in React Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
 
 L.Icon.Default.mergeOptions({
@@ -93,14 +93,18 @@ export default function Report() {
   };
 
   return (
-    <div style={styles.page}>
-      <div style={styles.card}>
-        <h1>Report Incident</h1>
+    <div className="tactical-page">
+      <div className="tactical-card">
+        <h1 className="tactical-title">Report Incident</h1>
+
+        <p className="tactical-subtitle">
+          Select incident details and mark the exact location on the tactical map.
+        </p>
 
         <select
           value={incidentType}
           onChange={(e) => setIncidentType(e.target.value)}
-          style={styles.input}
+          className="tactical-select"
         >
           <option value="">Select Incident Type</option>
           <option value="Robbery">Robbery</option>
@@ -116,26 +120,28 @@ export default function Report() {
           placeholder="Describe what happened"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          style={styles.textarea}
+          className="tactical-textarea"
         />
 
         <select
           value={severity}
           onChange={(e) => setSeverity(e.target.value)}
-          style={styles.input}
+          className="tactical-select"
         >
           <option value="low">Low Severity</option>
           <option value="medium">Medium Severity</option>
           <option value="high">High Severity</option>
         </select>
 
-        <button onClick={useCurrentLocation} style={styles.locationButton}>
+        <button onClick={useCurrentLocation} className="tactical-location-btn">
           Use My Current Location
         </button>
 
-        <p style={styles.helperText}>Or click on the map to select incident location</p>
+        <p className="tactical-helper">
+          Or click on the map to select incident location
+        </p>
 
-        <div style={styles.mapBox}>
+        <div className="tactical-map-box">
           <MapContainer
             center={[22.7196, 75.8577]}
             zoom={13}
@@ -151,102 +157,23 @@ export default function Report() {
         </div>
 
         {position && (
-          <div style={styles.locationInfo}>
+          <div className="tactical-location-info">
             <p>Selected Latitude: {position.lat.toFixed(6)}</p>
             <p>Selected Longitude: {position.lng.toFixed(6)}</p>
           </div>
         )}
 
-        <button onClick={submitReport} style={styles.button}>
+        <button onClick={submitReport} className="tactical-button">
           Submit Report
         </button>
 
-        <button onClick={() => navigate("/dashboard")} style={styles.backButton}>
+        <button
+          onClick={() => navigate("/dashboard")}
+          className="tactical-secondary"
+        >
           Back to Dashboard
         </button>
       </div>
     </div>
   );
 }
-
-const styles = {
-  page: {
-    minHeight: "100vh",
-    background: "#0f172a",
-    color: "white",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: "20px",
-  },
-  card: {
-    width: "100%",
-    maxWidth: "700px",
-    background: "#020617",
-    padding: "30px",
-    borderRadius: "12px",
-  },
-  input: {
-    width: "100%",
-    padding: "12px",
-    marginBottom: "12px",
-    borderRadius: "6px",
-    border: "none",
-  },
-  textarea: {
-    width: "100%",
-    padding: "12px",
-    height: "100px",
-    marginBottom: "12px",
-    borderRadius: "6px",
-    border: "none",
-  },
-  locationButton: {
-    width: "100%",
-    padding: "12px",
-    background: "#2563eb",
-    color: "white",
-    border: "none",
-    borderRadius: "6px",
-    cursor: "pointer",
-    marginBottom: "10px",
-    fontWeight: "bold",
-  },
-  helperText: {
-    color: "#cbd5e1",
-    fontSize: "14px",
-  },
-  mapBox: {
-    height: "350px",
-    width: "100%",
-    borderRadius: "10px",
-    overflow: "hidden",
-    marginBottom: "15px",
-  },
-  locationInfo: {
-    background: "#111827",
-    padding: "10px",
-    borderRadius: "8px",
-    marginBottom: "12px",
-    color: "#facc15",
-  },
-  button: {
-    width: "100%",
-    padding: "12px",
-    background: "#facc15",
-    border: "none",
-    borderRadius: "6px",
-    cursor: "pointer",
-    fontWeight: "bold",
-  },
-  backButton: {
-    width: "100%",
-    padding: "12px",
-    marginTop: "10px",
-    background: "#334155",
-    color: "white",
-    border: "none",
-    borderRadius: "6px",
-    cursor: "pointer",
-  },
-};

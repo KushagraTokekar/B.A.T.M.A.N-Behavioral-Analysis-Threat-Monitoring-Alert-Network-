@@ -1,76 +1,70 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../services/api";
+import "./Login.css";
 
 export default function Login() {
+  const navigate = useNavigate();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const handleLogin = async () => {
     try {
       const res = await api.post("/auth/login", {
-        email,
-        password,
+        email: email.trim(),
+        password: password.trim(),
       });
 
       localStorage.setItem("token", res.data.token);
+      localStorage.setItem("user", JSON.stringify(res.data.user));
 
-      alert("Login Successful!");
-      window.location.href = "/dashboard";
+      navigate("/dashboard");
     } catch (err) {
       alert(err.response?.data?.message || "Login Failed");
     }
   };
 
   return (
-    <div
-      style={{
-        height: "100vh",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        background: "#111",
-        color: "white",
-      }}
-    >
-      <div style={{ width: "350px" }}>
-        <h1>🦇 BATMAN</h1>
+    <div className="login-page">
+      <div className="login-overlay"></div>
 
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          style={{
-            width: "100%",
-            padding: "10px",
-            marginBottom: "10px",
-          }}
-        />
+      <div className="login-card">
+        <div className="login-badge">TACTICAL ACCESS</div>
 
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          style={{
-            width: "100%",
-            padding: "10px",
-            marginBottom: "10px",
-          }}
-        />
+        <h1>
+           <span>BATMAN</span>
+        </h1>
 
-        <button
-          onClick={handleLogin}
-          style={{
-            width: "100%",
-            padding: "10px",
-            background: "#facc15",
-            border: "none",
-            cursor: "pointer",
-          }}
-        >
-          Login
+        <p>
+          Behavioral Analysis, Threat Monitoring & Alert Network
+        </p>
+
+        <div className="input-group">
+          <label>Email Address</label>
+          <input
+            type="email"
+            placeholder="operator@batman.net"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+
+        <div className="input-group">
+          <label>Access Password</label>
+          <input
+            type="password"
+            placeholder="Enter secure password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+
+        <button onClick={handleLogin}>
+          ENTER COMMAND CENTER
         </button>
+
+        <small>Secure JWT authentication enabled</small>
       </div>
     </div>
   );
