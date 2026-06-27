@@ -1,39 +1,109 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Circle } from "react-leaflet";
 import { getDistance } from "geolib";
 import L from "leaflet";
 import api from "../services/api";
 import "leaflet/dist/leaflet.css";
 import "./Dashboard.css";
+import HeatmapLayer from "../components/HeatmapLayer";
 
 export default function Dashboard() {
   const navigate = useNavigate();
-
   const user = JSON.parse(localStorage.getItem("user"));
 
   const [reports, setReports] = useState([]);
   const [userLocation, setUserLocation] = useState(null);
   const [nearbyIncidents, setNearbyIncidents] = useState([]);
   const [isMapFullScreen, setIsMapFullScreen] = useState(false);
+  const [mapView, setMapView] = useState("both");
+
+  const heatmapPoints = reports.map((report) => [
+    Number(report.latitude),
+    Number(report.longitude),
+    report.severity === "high" ? 1.0 : report.severity === "medium" ? 0.6 : 0.3,
+  ]);
+
+  const calculateHotspots = () => {
+    const hotspots = [];
+
+    reports.forEach((report) => {
+      const nearbyReports = reports.filter((otherReport) => {
+        const distance = getDistance(
+          {
+            latitude: Number(report.latitude),
+            longitude: Number(report.longitude),
+          },
+          {
+            latitude: Number(otherReport.latitude),
+            longitude: Number(otherReport.longitude),
+          }
+        );
+
+        return distance <= 500;
+      });
+
+      if (nearbyReports.length >= 3) {
+        const riskScore = nearbyReports.reduce((score, item) => {
+          if (item.severity === "high") return score + 3;
+          if (item.severity === "medium") return score + 2;
+          return score + 1;
+        }, 0);
+
+        const alreadyExists = hotspots.some((hotspot) => {
+          const distance = getDistance(
+            {
+              latitude: hotspot.latitude,
+              longitude: hotspot.longitude,
+            },
+            {
+              latitude: Number(report.latitude),
+              longitude: Number(report.longitude),
+            }
+          );
+
+          return distance <= 500;
+        });
+
+        if (!alreadyExists) {
+          const highCount = nearbyReports.filter((r) => r.severity === "high").length;
+          const mediumCount = nearbyReports.filter((r) => r.severity === "medium").length;
+          const lowCount = nearbyReports.filter((r) => r.severity === "low").length;
+
+          hotspots.push({
+            latitude: Number(report.latitude),
+            longitude: Number(report.longitude),
+            reports: nearbyReports.length,
+            riskScore,
+            level: riskScore >= 8 ? "high" : riskScore >= 5 ? "medium" : "low",
+            highCount,
+            mediumCount,
+            lowCount,
+            incidents: nearbyReports.slice(0, 5),
+          });
+        }
+      }
+    });
+
+    return hotspots;
+  };
+
+  const hotspots = calculateHotspots();
 
   useEffect(() => {
-  const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token");
 
-  if (!token) {
-    navigate("/");
-    return;
-  }
+    if (!token) {
+      navigate("/");
+      return;
+    }
 
-  getUserLocation();
-  fetchReports();
-
-  const interval = setInterval(() => {
+    getUserLocation();
     fetchReports();
-  }, 10000);
 
-  return () => clearInterval(interval);
-}, [navigate]);
+    const interval = setInterval(fetchReports, 10000);
+    return () => clearInterval(interval);
+  }, [navigate]);
 
   useEffect(() => {
     if (!userLocation || reports.length === 0) return;
@@ -41,20 +111,14 @@ export default function Dashboard() {
     const nearby = reports
       .map((report) => {
         const distance = getDistance(
-          {
-            latitude: userLocation.latitude,
-            longitude: userLocation.longitude,
-          },
+          userLocation,
           {
             latitude: Number(report.latitude),
             longitude: Number(report.longitude),
           }
         );
 
-        return {
-          ...report,
-          distance,
-        };
+        return { ...report, distance };
       })
       .filter((report) => report.distance <= 3000)
       .sort((a, b) => a.distance - b.distance);
@@ -63,10 +127,7 @@ export default function Dashboard() {
   }, [userLocation, reports]);
 
   const getUserLocation = () => {
-    if (!navigator.geolocation) {
-      console.log("Geolocation is not supported by this browser.");
-      return;
-    }
+    if (!navigator.geolocation) return;
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -75,9 +136,7 @@ export default function Dashboard() {
           longitude: position.coords.longitude,
         });
       },
-      (error) => {
-        console.log("Location error:", error);
-      }
+      (error) => console.log("Location error:", error)
     );
   };
 
@@ -91,14 +150,13 @@ export default function Dashboard() {
   };
 
   const logout = () => {
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
-  navigate("/");
-};
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    navigate("/");
+  };
 
   const getIcon = (severity) => {
     let color = "green";
-
     if (severity === "high") color = "red";
     if (severity === "medium") color = "gold";
 
@@ -123,34 +181,18 @@ export default function Dashboard() {
         </div>
 
         <nav className="menu">
-  <button className="active">▦ Dashboard</button>
+          <button className="active">▦ Dashboard</button>
+          <button onClick={() => navigate("/report")}>⊕ Report Incident</button>
+          <button onClick={() => navigate("/my-reports")}>▣ My Reports</button>
 
-  <button onClick={() => navigate("/report")}>
-    ⊕ Report Incident
-  </button>
+          {user?.role === "admin" && (
+            <button onClick={() => navigate("/admin")}>🛡 Admin Panel</button>
+          )}
 
-  <button onClick={() => navigate("/my-reports")}>
-    ▣ My Reports
-  </button>
-
-  {user?.role === "admin" && (
-    <button onClick={() => navigate("/admin")}>
-      🛡 Admin Panel
-    </button>
-  )}
-
-  <button onClick={() => navigate("/analytics")}>
-  ⌁ Threat Analytics
-</button>
-
-  <button>
-    ◉ Social Monitoring
-  </button>
-
-  <button>
-    ⚙ Settings
-  </button>
-</nav>
+          <button onClick={() => navigate("/analytics")}>⌁ Threat Analytics</button>
+          <button>◉ Social Monitoring</button>
+          <button>⚙ Settings</button>
+        </nav>
 
         <div className="operator-card">
           <div className="avatar">👤</div>
@@ -184,8 +226,7 @@ export default function Dashboard() {
           <div className="nearby-alert">
             <h2>⚠ Nearby Threat Alert</h2>
             <p>
-              {nearbyIncidents.length} incident(s) detected within 3 km of your
-              location.
+              {nearbyIncidents.length} incident(s) detected within 3 km of your location.
             </p>
 
             {nearbyIncidents.slice(0, 3).map((incident) => (
@@ -201,79 +242,123 @@ export default function Dashboard() {
         )}
 
         <section className="stats-grid">
-          <StatCard
-            icon="📁"
-            title="Total Incidents"
-            value={reports.length}
-            note="Live from database"
-          />
-          <StatCard
-            icon="🎯"
-            title="High Risk Reports"
-            value={reports.filter((r) => r.severity === "high").length}
-            note="High severity incidents"
-            danger
-          />
-          <StatCard
-            icon="🚨"
-            title="Pending Reports"
-            value={reports.filter((r) => r.status === "pending").length}
-            note="Need verification"
-            danger
-          />
-          <StatCard
-            icon="🛡️"
-            title="Verified Reports"
-            value={reports.filter((r) => r.status === "verified").length}
-            note="Confirmed incidents"
-          />
+          <StatCard icon="📁" title="Total Incidents" value={reports.length} note="Live from database" />
+          <StatCard icon="🎯" title="High Risk Reports" value={reports.filter((r) => r.severity === "high").length} note="High severity incidents" danger />
+          <StatCard icon="🚨" title="Pending Reports" value={reports.filter((r) => r.status === "pending").length} note="Need verification" danger />
+          <StatCard icon="🛡️" title="Verified Reports" value={reports.filter((r) => r.status === "verified").length} note="Confirmed incidents" />
+          <StatCard icon="🔥" title="Crime Hotspots" value={hotspots.length} note="Detected within 500m clusters" danger />
         </section>
 
         <section className="content-grid">
           <div className={isMapFullScreen ? "map-fullscreen" : "panel map-panel"}>
-  <div className="panel-header">
-    <h3>LIVE RISK MAP</h3>
+            <div className="panel-header">
+              <h3>LIVE RISK MAP</h3>
 
-    <button onClick={() => setIsMapFullScreen(!isMapFullScreen)}>
-      {isMapFullScreen ? "Exit Fullscreen" : "Open Fullscreen"}
-    </button>
-  </div>
+              <div className="map-controls">
+                <select value={mapView} onChange={(e) => setMapView(e.target.value)}>
+                  <option value="markers">Markers</option>
+                  <option value="heatmap">Heatmap</option>
+                  <option value="both">Both</option>
+                </select>
 
-  <div className={isMapFullScreen ? "fullscreen-map-box" : "dashboard-map"}>
-    <MapContainer
-      center={[22.7196, 75.8577]}
-      zoom={12}
-      style={{ height: "100%", width: "100%" }}
-    >
-      <TileLayer
-        attribution="© OpenStreetMap"
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+                <button onClick={() => setIsMapFullScreen(!isMapFullScreen)}>
+                  {isMapFullScreen ? "Exit Fullscreen" : "Open Fullscreen"}
+                </button>
+              </div>
+            </div>
 
-      {reports.map((report) => (
-        <Marker
-          key={report.id}
-          position={[
-            Number(report.latitude),
-            Number(report.longitude),
-          ]}
-          icon={getIcon(report.severity)}
-        >
-          <Popup>
-            <h3>{report.incident_type}</h3>
-            <p>{report.description}</p>
-            <p>
-              <strong>Severity:</strong> {report.severity}
-            </p>
-            <p>
-              <strong>Status:</strong> {report.status}
-            </p>
-          </Popup>
-        </Marker>
-      ))}
-    </MapContainer>
-  </div>
-</div>
+            <div className={isMapFullScreen ? "fullscreen-map-box" : "dashboard-map"}>
+              <MapContainer
+                center={[22.7196, 75.8577]}
+                zoom={12}
+                style={{ height: "100%", width: "100%" }}
+              >
+                <TileLayer
+                  attribution="© OpenStreetMap"
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+
+                {(mapView === "heatmap" || mapView === "both") && (
+                  <HeatmapLayer points={heatmapPoints} />
+                )}
+
+                {(mapView === "markers" || mapView === "both") &&
+                  reports.map((report) => (
+                    <Marker
+                      key={report.id}
+                      position={[Number(report.latitude), Number(report.longitude)]}
+                      icon={getIcon(report.severity)}
+                    >
+                      <Popup>
+                        <h3>{report.incident_type}</h3>
+                        <p>{report.description}</p>
+                        <p><strong>Severity:</strong> {report.severity}</p>
+                        <p><strong>Status:</strong> {report.status}</p>
+                      </Popup>
+                    </Marker>
+                  ))}
+
+                {hotspots.map((hotspot, index) => (
+                  <Circle
+                    key={index}
+                    center={[hotspot.latitude, hotspot.longitude]}
+                    radius={500}
+                    pathOptions={{
+                      color:
+                        hotspot.level === "high"
+                          ? "red"
+                          : hotspot.level === "medium"
+                          ? "orange"
+                          : "green",
+                      fillColor:
+                        hotspot.level === "high"
+                          ? "red"
+                          : hotspot.level === "medium"
+                          ? "orange"
+                          : "green",
+                      fillOpacity: 0.25,
+                    }}
+                  >
+                    <Popup>
+                      <div className="hotspot-popup">
+                        <h3>⚠ Hotspot Intelligence</h3>
+                        <p><strong>Risk Level:</strong> {hotspot.level.toUpperCase()}</p>
+                        <p><strong>Risk Score:</strong> {hotspot.riskScore}</p>
+                        <p><strong>Total Reports:</strong> {hotspot.reports}</p>
+
+                        <hr />
+
+                        <p>🔴 High: {hotspot.highCount}</p>
+                        <p>🟡 Medium: {hotspot.mediumCount}</p>
+                        <p>🟢 Low: {hotspot.lowCount}</p>
+
+                        <hr />
+
+                        <strong>Recent Incidents</strong>
+
+                        {hotspot.incidents.map((incident) => (
+                          <p key={incident.id}>
+                            • {incident.incident_type} — {incident.severity}
+                          </p>
+                        ))}
+
+                        <hr />
+
+                        <p>
+                          <strong>Recommended Action:</strong>{" "}
+                          {hotspot.level === "high"
+                            ? "Increase patrols immediately"
+                            : hotspot.level === "medium"
+                            ? "Monitor area closely"
+                            : "Keep under observation"}
+                        </p>
+                      </div>
+                    </Popup>
+                  </Circle>
+                ))}
+              </MapContainer>
+            </div>
+          </div>
 
           <div className="panel alerts">
             <div className="panel-header">

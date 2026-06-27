@@ -404,3 +404,37 @@
     text-align: center;
   }
 }
+
+.hotspot-popup {
+  min-width: 230px;
+  color: #020617;
+}
+
+.hotspot-popup h3 {
+  margin: 0 0 8px;
+  color: #dc2626;
+}
+
+.hotspot-popup p {
+  margin: 5px 0;
+}
+
+.hotspot-popup hr {
+  border: none;
+  border-top: 1px solid #cbd5e1;
+  margin: 8px 0;
+}
+
+.map-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.map-controls select {
+  background: #0f172a;
+  color: white;
+  border: 1px solid #38bdf8;
+  padding: 10px 14px;
+  border-radius: 8px;
+}
