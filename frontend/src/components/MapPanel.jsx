@@ -6,7 +6,6 @@ import {
   Circle,
 } from "react-leaflet";
 
-import L from "leaflet";
 import HeatmapLayer from "./HeatmapLayer";
 import HotspotPopup from "./HotspotPopup";
 

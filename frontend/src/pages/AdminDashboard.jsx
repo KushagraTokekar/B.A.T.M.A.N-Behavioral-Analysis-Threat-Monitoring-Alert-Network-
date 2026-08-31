@@ -18,7 +18,7 @@ export default function AdminDashboard() {
     fetchReports();
   }, [navigate]);
 
-  const fetchReports = async () => {
+  async function fetchReports() {
     try {
       const token = localStorage.getItem("token");
 
@@ -28,17 +28,17 @@ export default function AdminDashboard() {
         },
       });
 
-      setReports(res.data);
+      setReports(res.data.data || []);
     } catch (err) {
       console.log(err);
     }
-  };
+  }
 
   const updateStatus = async (id, action) => {
     try {
       const token = localStorage.getItem("token");
 
-      await api.put(
+      await api.patch(
         `/admin/reports/${id}/${action}`,
         {},
         {
@@ -56,9 +56,9 @@ export default function AdminDashboard() {
 
   const stats = {
     total: reports.length,
-    pending: reports.filter((r) => r.status === "pending").length,
+    pending: reports.filter((r) => r.status === "submitted").length,
     verified: reports.filter((r) => r.status === "verified").length,
-    fake: reports.filter((r) => r.status === "fake").length,
+    fake: reports.filter((r) => r.status === "rejected").length,
     resolved: reports.filter((r) => r.status === "resolved").length,
   };
 
@@ -73,9 +73,9 @@ export default function AdminDashboard() {
 
         <div className="admin-stats">
           <AdminStatCard title="Total" value={stats.total} />
-          <AdminStatCard title="Pending" value={stats.pending} />
+          <AdminStatCard title="Submitted" value={stats.pending} />
           <AdminStatCard title="Verified" value={stats.verified} />
-          <AdminStatCard title="Fake" value={stats.fake} />
+          <AdminStatCard title="Rejected" value={stats.fake} />
           <AdminStatCard title="Resolved" value={stats.resolved} />
         </div>
 

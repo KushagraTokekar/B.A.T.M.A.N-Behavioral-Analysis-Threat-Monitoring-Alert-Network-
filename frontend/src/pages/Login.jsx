@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import api from "../services/api";
 import "./Login.css";
 
@@ -64,7 +64,7 @@ export default function Login() {
           ENTER COMMAND CENTER
         </button>
 
-        <small>Secure JWT authentication enabled</small>
+        <small>New to BATMAN? <Link to="/signup">Create an account</Link></small>
       </div>
     </div>
   );

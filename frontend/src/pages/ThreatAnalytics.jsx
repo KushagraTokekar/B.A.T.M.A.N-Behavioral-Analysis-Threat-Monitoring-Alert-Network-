@@ -11,14 +11,14 @@ export default function ThreatAnalytics() {
     fetchReports();
   }, []);
 
-  const fetchReports = async () => {
+  async function fetchReports() {
     try {
       const res = await api.get("/reports");
-      setReports(res.data);
+      setReports(res.data.data || []);
     } catch (err) {
       console.log(err);
     }
-  };
+  }
 
   const countBy = (key) => {
     return reports.reduce((acc, report) => {
@@ -33,7 +33,7 @@ export default function ThreatAnalytics() {
   const statusCounts = countBy("status");
 
   const highRiskCount = reports.filter((r) => r.severity === "high").length;
-  const pendingCount = reports.filter((r) => r.status === "pending").length;
+  const pendingCount = reports.filter((r) => r.status === "submitted").length;
 
   const riskScore = Math.min(
     100,
@@ -57,7 +57,7 @@ export default function ThreatAnalytics() {
         <div className="analytics-stats">
           <AnalyticsCard title="Total Reports" value={reports.length} />
           <AnalyticsCard title="High Risk" value={highRiskCount} />
-          <AnalyticsCard title="Pending" value={pendingCount} />
+          <AnalyticsCard title="Submitted" value={pendingCount} />
           <AnalyticsCard title="Risk Score" value={`${riskScore}/100`} />
         </div>
 
@@ -73,7 +73,7 @@ export default function ThreatAnalytics() {
               <p>{getRiskLabel()}</p>
             </div>
             <p className="analytics-note">
-              Score is calculated using number of reports, pending reports, and
+              Score is calculated using number of reports, submitted reports, and
               high-severity incidents.
             </p>
           </div>
