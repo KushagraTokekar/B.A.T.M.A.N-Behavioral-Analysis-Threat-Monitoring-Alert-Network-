@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import MapPanel from "../components/MapPanel";
 import { getDistance } from "geolib";
@@ -15,7 +15,6 @@ export default function Dashboard() {
 
   const [reports, setReports] = useState([]);
   const [userLocation, setUserLocation] = useState(null);
-  const [nearbyIncidents, setNearbyIncidents] = useState([]);
   const [isMapFullScreen, setIsMapFullScreen] = useState(false);
   const [mapView, setMapView] = useState("both");
 
@@ -106,28 +105,12 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, [navigate]);
 
-  useEffect(() => {
-    if (!userLocation || reports.length === 0) return;
-
-    const nearby = reports
-      .map((report) => {
-        const distance = getDistance(
-          userLocation,
-          {
-            latitude: Number(report.latitude),
-            longitude: Number(report.longitude),
-          }
-        );
-
-        return { ...report, distance };
-      })
-      .filter((report) => report.distance <= 3000)
-      .sort((a, b) => a.distance - b.distance);
-
-    setNearbyIncidents(nearby);
+  const nearbyIncidents = useMemo(() => {
+    if (!userLocation) return [];
+    return reports.map((report) => ({ ...report, distance: getDistance(userLocation, { latitude: Number(report.latitude), longitude: Number(report.longitude) }) })).filter((report) => report.distance <= 3000).sort((a, b) => a.distance - b.distance);
   }, [userLocation, reports]);
 
-  const getUserLocation = () => {
+  function getUserLocation() {
     if (!navigator.geolocation) return;
 
     navigator.geolocation.getCurrentPosition(
@@ -141,20 +124,20 @@ export default function Dashboard() {
     );
   };
 
-  const fetchReports = async () => {
+  async function fetchReports() {
     try {
       const res = await api.get("/reports");
-      setReports(res.data);
+      setReports(res.data.data || []);
     } catch (err) {
       console.log(err);
     }
-  };
+  }
 
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     navigate("/");
-  };
+  }
 
   const getIcon = (severity) => {
     let color = "green";

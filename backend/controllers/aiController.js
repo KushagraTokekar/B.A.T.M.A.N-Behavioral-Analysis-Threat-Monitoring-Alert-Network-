@@ -6,7 +6,7 @@ exports.getHotspotsAnalysis = async (req, res) => {
     const [reports] = await db.query(`
       SELECT *
       FROM reports
-      WHERE status != 'fake'
+      WHERE status != 'rejected'
       ORDER BY created_at DESC
     `);
 

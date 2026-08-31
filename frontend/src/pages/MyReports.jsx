@@ -12,7 +12,7 @@ export default function MyReports() {
     fetchMyReports();
   }, []);
 
-  const fetchMyReports = async () => {
+  async function fetchMyReports() {
     try {
       const token = localStorage.getItem("token");
 
@@ -27,19 +27,19 @@ export default function MyReports() {
         },
       });
 
-      setReports(res.data);
+      setReports(res.data.data || []);
     } catch (err) {
       alert(err.response?.data?.message || "Failed to load reports");
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const getStatusClass = (status) => {
     if (status === "verified") return "status-verified";
-    if (status === "fake") return "status-fake";
+    if (status === "rejected") return "status-rejected";
     if (status === "resolved") return "status-resolved";
-    return "status-pending";
+    return "status-submitted";
   };
 
   return (

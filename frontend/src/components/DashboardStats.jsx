@@ -18,8 +18,8 @@ export default function DashboardStats({ reports, hotspots }) {
 
       <StatCard
         icon="🚨"
-        title="Pending Reports"
-        value={reports.filter(r => r.status === "pending").length}
+        title="Submitted Reports"
+        value={reports.filter(r => r.status === "submitted").length}
         note="Awaiting Verification"
         danger
       />

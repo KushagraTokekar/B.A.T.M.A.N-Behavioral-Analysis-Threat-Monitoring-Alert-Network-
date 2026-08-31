@@ -1,287 +1,44 @@
 const db = require("../db");
+const { calculateThreatScore, assessAuthenticity } = require("../services/reportIntelligence");
 
-exports.createReport = async (req, res) => {
+const INCIDENT_TYPES = new Set(["Theft", "Robbery", "Assault", "Harassment", "Missing person", "Accident", "Fire", "Vandalism", "Cybercrime", "Suspicious activity", "Drug-related activity", "Other"]);
+const SEVERITIES = new Set(["low", "medium", "high"]);
+
+exports.createReport = async (req, res, next) => {
   try {
-    const {
-      incident_type,
-      description,
-      latitude,
-      longitude,
-      severity,
-    } = req.body;
-
-    const user_id = req.user.id;
-
-    // ---------------- Validation ----------------
-
-    if (
-      !incident_type ||
-      !description ||
-      latitude === undefined ||
-      longitude === undefined ||
-      !severity
-    ) {
-      return res.status(400).json({
-        message: "All fields are required",
-      });
+    const { incident_type, title, description, latitude, longitude, severity, occurred_at } = req.body;
+    const type = typeof incident_type === "string" ? incident_type.trim() : "";
+    const detail = typeof description === "string" ? description.trim() : "";
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+    if (!INCIDENT_TYPES.has(type) || !SEVERITIES.has(severity) || detail.length < 15 || detail.length > 5000 || !Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return res.status(400).json({ message: "Provide a valid incident type, severity, detailed description, and location." });
     }
-
-    if (description.trim().length < 15) {
-      return res.status(400).json({
-        message:
-          "Description is too short. Please provide more details.",
-      });
+    if (title !== undefined && (typeof title !== "string" || title.trim().length > 160)) {
+      return res.status(400).json({ message: "Title must be 160 characters or fewer." });
     }
-
-    if (
-      latitude < -90 ||
-      latitude > 90 ||
-      longitude < -180 ||
-      longitude > 180
-    ) {
-      return res.status(400).json({
-        message: "Invalid location selected",
-      });
-    }
-
-    // ---------------- Spam Protection ----------------
-
-    const [recentReports] = await db.query(
-      `
-      SELECT *
-      FROM reports
-      WHERE user_id = ?
-      AND created_at >= NOW() - INTERVAL 10 MINUTE
-      `,
-      [user_id]
-    );
-
-    if (recentReports.length >= 3) {
-      return res.status(429).json({
-        message:
-          "Too many reports submitted in a short time. Please wait.",
-      });
-    }
-
-    // ---------------- Duplicate Detection ----------------
-
-    const [duplicates] = await db.query(
-      `
-      SELECT *
-      FROM reports
-      WHERE user_id = ?
-      AND incident_type = ?
-      AND ABS(latitude - ?) <= 0.001
-      AND ABS(longitude - ?) <= 0.001
-      AND created_at >= NOW() - INTERVAL 30 MINUTE
-      `,
-      [user_id, incident_type, latitude, longitude]
-    );
-
-    let status = "pending";
-    let threatScore = 0;
-
-    // ---------------- Severity Score ----------------
-
-    switch (severity) {
-      case "high":
-        threatScore += 50;
-        break;
-
-      case "medium":
-        threatScore += 35;
-        break;
-
-      default:
-        threatScore += 20;
-    }
-
-    // ---------------- Description Length ----------------
-
-    const len = description.trim().length;
-
-    if (len > 150)
-      threatScore += 20;
-    else if (len > 80)
-      threatScore += 15;
-    else if (len > 40)
-      threatScore += 10;
-    else
-      threatScore += 5;
-
-    // ---------------- AI Keyword Detection ----------------
-
-    const keywords = [
-      "gun",
-      "weapon",
-      "knife",
-      "blood",
-      "fire",
-      "bomb",
-      "explosion",
-      "shooting",
-      "robbery",
-      "assault",
-      "kidnap",
-      "fight",
-      "terror",
-      "accident",
-      "violence",
-      "riot",
-    ];
-
-    const text = description.toLowerCase();
-
-    let keywordScore = 0;
-
-    keywords.forEach((word) => {
-      if (text.includes(word)) {
-        keywordScore += 3;
-      }
-    });
-
-    threatScore += Math.min(keywordScore, 15);
-
-    // ---------------- Nearby Reports ----------------
-
-    const [nearbyReports] = await db.query(
-      `
-      SELECT *
-      FROM reports
-      WHERE
-      ABS(latitude - ?) <= 0.01
-      AND ABS(longitude - ?) <= 0.01
-      AND status != 'fake'
-      AND created_at >= NOW() - INTERVAL 24 HOUR
-      `,
-      [latitude, longitude]
-    );
-
-    threatScore += Math.min(nearbyReports.length * 5, 30);
-
-    // ---------------- Duplicate Penalty ----------------
-
-    if (duplicates.length > 0) {
-      status = "fake";
-      threatScore -= 40;
-    }
-
-    // ---------------- Clamp Score ----------------
-
-    threatScore = Math.max(0, Math.min(100, threatScore));
-
-    // ---------------- Save Report ----------------
-
-    await db.query(
-      `
-      INSERT INTO reports
-      (
-        user_id,
-        incident_type,
-        description,
-        latitude,
-        longitude,
-        severity,
-        status,
-        threat_score
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `,
-      [
-        user_id,
-        incident_type,
-        description,
-        latitude,
-        longitude,
-        severity,
-        status,
-        threatScore,
-      ]
-    );
-
-    // ---------------- Response ----------------
-
-    if (status === "fake") {
-      return res.status(201).json({
-        message:
-          "Report submitted but marked suspicious due to duplicate activity.",
-        threatScore,
-      });
-    }
-
-    return res.status(201).json({
-      message: "Incident reported successfully.",
-      threatScore,
-    });
-
-  } catch (error) {
-    console.error(error);
-
-    res.status(500).json({
-      message: "Report failed",
-      error: error.message,
-    });
-  }
+    const [recent] = await db.query("SELECT COUNT(*) AS count FROM reports WHERE user_id = ? AND created_at >= NOW() - INTERVAL 10 MINUTE", [req.user.id]);
+    if (recent[0].count >= 3) return res.status(429).json({ message: "Too many reports submitted in a short time. Please wait." });
+    const [duplicates] = await db.query("SELECT id FROM reports WHERE user_id = ? AND incident_type = ? AND ABS(latitude - ?) <= 0.001 AND ABS(longitude - ?) <= 0.001 AND created_at >= NOW() - INTERVAL 30 MINUTE", [req.user.id, type, lat, lng]);
+    const [nearby] = await db.query("SELECT id FROM reports WHERE ABS(latitude - ?) <= 0.01 AND ABS(longitude - ?) <= 0.01 AND status NOT IN ('rejected') AND created_at >= NOW() - INTERVAL 24 HOUR", [lat, lng]);
+    const threatScore = calculateThreatScore({ severity, description: detail, nearbyCount: nearby.length });
+    const authenticity = assessAuthenticity({ description: detail, duplicateCount: duplicates.length, recentUserCount: recent[0].count });
+    const [result] = await db.query("INSERT INTO reports (user_id, incident_type, title, description, latitude, longitude, severity, status, threat_score, authenticity_score, ai_review_required, occurred_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'submitted', ?, ?, ?, COALESCE(?, NOW()))", [req.user.id, type, title?.trim() || null, detail, lat, lng, severity, threatScore, authenticity.authenticityScore, authenticity.requiresHumanReview, occurred_at || null]);
+    return res.status(201).json({ message: "Report submitted for human review.", reportId: result.insertId, threatScore, authenticity });
+  } catch (error) { next(error); }
 };
 
-
-
-// ------------------------------------------------------------
-// GET ALL REPORTS
-// ------------------------------------------------------------
-
-exports.getAllReports = async (req, res) => {
+exports.getAllReports = async (req, res, next) => {
   try {
-
-    const [reports] = await db.query(`
-      SELECT
-        reports.*,
-        users.name
-      FROM reports
-      LEFT JOIN users
-      ON reports.user_id = users.id
-      ORDER BY reports.created_at DESC
-    `);
-
-    res.json(reports);
-
-  } catch (error) {
-
-    res.status(500).json({
-      message: "Failed to fetch reports",
-      error: error.message,
-    });
-
-  }
+    const limit = Math.min(Math.max(Number(req.query.limit) || 100, 1), 250);
+    const [reports] = await db.query("SELECT id, incident_type, title, description, latitude, longitude, severity, status, threat_score, authenticity_score, occurred_at, created_at FROM reports WHERE status IN ('verified', 'resolved') ORDER BY occurred_at DESC LIMIT ?", [limit]);
+    res.json({ data: reports, pagination: { limit, count: reports.length } });
+  } catch (error) { next(error); }
 };
 
-
-
-// ------------------------------------------------------------
-// GET MY REPORTS
-// ------------------------------------------------------------
-
-exports.getMyReports = async (req, res) => {
+exports.getMyReports = async (req, res, next) => {
   try {
-
-    const [reports] = await db.query(
-      `
-      SELECT *
-      FROM reports
-      WHERE user_id = ?
-      ORDER BY created_at DESC
-      `,
-      [req.user.id]
-    );
-
-    res.json(reports);
-
-  } catch (error) {
-
-    res.status(500).json({
-      message: "Failed to fetch your reports",
-      error: error.message,
-    });
-
-  }
+    const [reports] = await db.query("SELECT * FROM reports WHERE user_id = ? ORDER BY created_at DESC", [req.user.id]);
+    res.json({ data: reports });
+  } catch (error) { next(error); }
 };
