@@ -2,8 +2,7 @@
   min-height: 100vh;
   width: 100vw;
   background:
-    linear-gradient(rgba(2, 6, 23, 0.86), rgba(2, 6, 23, 0.94)),
-    url("../assets/login-bg.jpg");
+    linear-gradient(rgba(2, 6, 23, 0.86), rgba(2, 6, 23, 0.94));
   background-size: cover;
   background-position: center;
   color: white;
@@ -207,9 +206,9 @@
   margin-top: 12px;
 }
 
-.status-pending,
+.status-submitted,
 .status-verified,
-.status-fake,
+.status-rejected,
 .status-resolved {
   padding: 5px 10px;
   border-radius: 999px;
@@ -218,7 +217,7 @@
   white-space: nowrap;
 }
 
-.status-pending {
+.status-submitted {
   color: #facc15;
   border: 1px solid #facc15;
 }
@@ -228,7 +227,7 @@
   border: 1px solid #22c55e;
 }
 
-.status-fake {
+.status-rejected {
   color: #ef4444;
   border: 1px solid #ef4444;
 }
@@ -300,7 +299,7 @@
   text-transform: uppercase;
 }
 
-.admin-status.pending {
+.admin-status.submitted {
   color: #facc15;
   border: 1px solid #facc15;
 }
@@ -310,7 +309,7 @@
   border: 1px solid #22c55e;
 }
 
-.admin-status.fake {
+.admin-status.rejected {
   color: #ef4444;
   border: 1px solid #ef4444;
 }

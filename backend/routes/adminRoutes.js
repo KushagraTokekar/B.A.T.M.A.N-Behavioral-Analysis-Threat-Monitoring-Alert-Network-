@@ -1,19 +1,9 @@
 const express = require("express");
-const {
-  getAllReportsAdmin,
-  verifyReport,
-  rejectReport,
-  resolveReport,
-} = require("../controllers/adminController");
-
+const { getAllReportsAdmin, updateReportStatus } = require("../controllers/adminController");
 const authMiddleware = require("../middleware/authMiddleware");
 const adminMiddleware = require("../middleware/adminMiddleware");
-
 const router = express.Router();
-
-router.get("/reports", authMiddleware, adminMiddleware, getAllReportsAdmin);
-router.put("/reports/:id/verify", authMiddleware, adminMiddleware, verifyReport);
-router.put("/reports/:id/reject", authMiddleware, adminMiddleware, rejectReport);
-router.put("/reports/:id/resolve", authMiddleware, adminMiddleware, resolveReport);
-
+router.use(authMiddleware, adminMiddleware);
+router.get("/reports", getAllReportsAdmin);
+router.patch("/reports/:id/:action", updateReportStatus);
 module.exports = router;

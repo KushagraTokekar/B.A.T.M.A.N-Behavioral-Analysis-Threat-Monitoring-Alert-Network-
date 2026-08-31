@@ -37,14 +37,14 @@ export default function RiskMap() {
     fetchReports();
   }, []);
 
-  const fetchReports = async () => {
+  async function fetchReports() {
     try {
       const res = await api.get("/reports");
-      setReports(res.data);
+      setReports(res.data.data || []);
     } catch (err) {
       console.log(err);
     }
-  };
+  }
 
   const getIcon = (severity) => {
     if (severity === "high") return redIcon;
