@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const db = require("./db");
+const { ensureReportSchema } = require("./database/ensureSchema");
 const app = express();
 const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173").split(",").map((origin) => origin.trim());
 app.disable("x-powered-by");
@@ -14,5 +15,10 @@ app.use("/api/admin", require("./routes/adminRoutes"));
 app.use("/api/ai", require("./routes/aiRoutes"));
 app.use((req, res) => res.status(404).json({ message: "Route not found." }));
 app.use((err, _req, res, _next) => { console.error(err); res.status(err.status || 500).json({ message: err.status ? err.message : "An unexpected server error occurred." }); });
-if (require.main === module) { const port = Number(process.env.PORT) || 5000; app.listen(port, () => console.log(`BATMAN API listening on ${port}`)); }
+if (require.main === module) {
+  const port = Number(process.env.PORT) || 5000;
+  ensureReportSchema()
+    .then(() => app.listen(port, () => console.log(`BATMAN API listening on ${port}`)))
+    .catch((error) => { console.error("Database schema initialization failed:", error.message); process.exitCode = 1; });
+}
 module.exports = app;

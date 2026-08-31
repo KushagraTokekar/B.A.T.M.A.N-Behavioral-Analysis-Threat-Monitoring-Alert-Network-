@@ -13,7 +13,7 @@ BATMAN is a crime-intelligence platform for community incident reporting and adm
 React 19 + Vite + Leaflet, Express 5 + MySQL2, JWT, bcryptjs.
 
 ## Run locally
-1. Create a MySQL database and import `database/batman.sql`. Existing installs should apply `database/migrations/001_intelligence_foundation.sql` once.
+1. Create a MySQL database and import `database/batman.sql`. Existing installations are updated automatically when the backend starts; alternatively, run `cd backend && npm run migrate`. The SQL migration remains available for controlled deployment workflows.
 2. Copy `.env.example` to `backend/.env`, use a unique 32+ character `JWT_SECRET`, and configure a least-privilege MySQL account.
 3. `cd backend && npm install && npm start`
 4. Copy `frontend/.env.example` to `frontend/.env`, then `cd frontend && npm install && npm run dev`.
